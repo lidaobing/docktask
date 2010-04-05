@@ -24,6 +24,9 @@ such as rememberthemilk, google tasks, etc.
 '''
 
 import os
+import logging
+import webbrowser
+
 import gtk
 import gtkmozembed
 
@@ -88,11 +91,25 @@ class StatusIcon(gtk.StatusIcon):
 class PopupWindow(gtk.Window):
     def __init__(self, url):
         super(self.__class__, self).__init__()
-        html = gtkmozembed.MozEmbed()
+        html = Html()
         html.load_url(url)
         self.add(html)
         self.set_default_size(400, 300)
-        
+
+class Html(gtkmozembed.MozEmbed):
+    def __init__(self):
+        super(self.__class__, self).__init__()
+        self.connect("open-uri", self.onOpenUri)
+        self.connect("new-window", self.onNewWindow)
+
+    def onOpenUri(self, _html, uri, *args):
+        logging.info(uri)
+        return False
+
+    def onNewWindow(self, _html, retval, *args):
+        url = self.get_link_message()
+        logging.info(url)
+        webbrowser.open(url)
 
 class DockTaskWindow(gtk.Window):
     def __init__(self):
@@ -107,7 +124,7 @@ class DockTaskWindow(gtk.Window):
         toolbar = gtk.Toolbar()
         toolbar.set_style(gtk.TOOLBAR_ICONS)
 
-        html = gtkmozembed.MozEmbed()
+        html = Html()
 
         dockAction = gtk.Action("input", "input", "if you found you can not input in the web page, click here",
                                 gtk.STOCK_INDENT)
@@ -222,4 +239,5 @@ def main():
     DockTaskApp().start()
 
 if __name__ == '__main__':
+    #logging.basicConfig(level=logging.INFO)
     main()
