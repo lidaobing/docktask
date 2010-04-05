@@ -73,6 +73,18 @@ def getWorkAreaGeometry(gtkWindow):
     return res
 
 
+class StatusIcon(gtk.StatusIcon):
+    def __init__(self, dockTaskWindow):
+        super(self.__class__, self).__init__()
+        self.set_from_stock(gtk.STOCK_INDENT)
+        self.dockTaskWindow = dockTaskWindow
+        self.connect("activate", self.onActivate)
+        self.set_visible(False)
+
+    def onActivate(self, *args):
+        self.dockTaskWindow.show_all()
+        self.set_visible(False)
+
 class PopupWindow(gtk.Window):
     def __init__(self, url):
         super(self.__class__, self).__init__()
@@ -93,6 +105,8 @@ class DockTaskWindow(gtk.Window):
         rootBox.set_border_width(2)
         
         toolbar = gtk.Toolbar()
+        toolbar.set_style(gtk.TOOLBAR_ICONS)
+
         html = gtkmozembed.MozEmbed()
 
         dockAction = gtk.Action("input", "input", "if you found you can not input in the web page, click here",
@@ -100,10 +114,12 @@ class DockTaskWindow(gtk.Window):
         homeAction = gtk.Action("home", "home", "return the start page", gtk.STOCK_HOME)
         refreshAction = gtk.Action("refresh", "refresh", "refresh", gtk.STOCK_REFRESH)
         exitAction = gtk.Action("exit", "exit", "exit", gtk.STOCK_QUIT)
+        trayAction = gtk.Action("tray", "tray", "minimize to tray", gtk.STOCK_GO_DOWN)
 
         toolbar.add(dockAction.create_tool_item())
         toolbar.add(homeAction.create_tool_item())
         toolbar.add(refreshAction.create_tool_item())
+        toolbar.add(trayAction.create_tool_item())
         toolbar.add(exitAction.create_tool_item())
 
         rootBox.pack_start(toolbar, False)
@@ -114,11 +130,15 @@ class DockTaskWindow(gtk.Window):
         self.set_default_size(200, 750)
 
         self.html = html
+        self.statusIcon = StatusIcon(self)
 
         dockAction.connect("activate", self.onDockButtonClick)
         refreshAction.connect("activate", self.onRefresh)
         exitAction.connect("activate", self.onExit)
         homeAction.connect("activate", self.onHome)
+        trayAction.connect("activate", self.onTray)
+        self.connect("enter-notify-event", self.onEnterNotifyEvent)
+        self.connect("show", self.onShow)
 
     def onHome(self, *args):
         if self.defaultUrl is not None:
@@ -133,7 +153,7 @@ class DockTaskWindow(gtk.Window):
         #self.entry.grab_focus()
 
     def onEnterNotifyEvent(self, *args):
-        self.entry.grab_focus()
+        self.activate_default()
 
     def onDockButtonClick(self, *args):
         PopupWindow(self.html.get_location()).show_all()
@@ -168,12 +188,20 @@ class DockTaskWindow(gtk.Window):
             gtk.gdk.PROP_MODE_REPLACE,
             strut_partial)
 
+    def onTray(self, *args):
+        self.statusIcon.set_visible(True)
+        self.hide()
+
+    def onShow(self, *args):
+        self.onWorkingAreaChange()
+
 class DockTaskApp(object):
     def __init__(self):
         self._initMozilla()
         self.window = DockTaskWindow()
         self.window.connect("destroy", lambda *args: gtk.main_quit())
         self.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_DOCK)
+        #self.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_NORMAL)
 
     def _initMozilla(self):
         path = os.path.expanduser('~/.config/docktask/mozilla')
