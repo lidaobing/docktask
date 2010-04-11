@@ -123,6 +123,7 @@ class DockTaskWindow(gtk.Window):
         
         toolbar = gtk.Toolbar()
         toolbar.set_style(gtk.TOOLBAR_ICONS)
+        toolbar.set_icon_size(gtk.ICON_SIZE_SMALL_TOOLBAR)
 
         html = Html()
 
@@ -236,8 +237,8 @@ class DockTaskApp(object):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
     DockTaskApp().start()
 
 if __name__ == '__main__':
-    #logging.basicConfig(level=logging.INFO)
     main()
