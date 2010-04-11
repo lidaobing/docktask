@@ -1,0 +1,8 @@
+[Desktop Entry]
+Categories=Network;
+Type=Application
+Name=DockTask
+Exec=docktask
+GenericName=Dock Task
+Terminal=false
+Icon=docktask
