@@ -27,8 +27,14 @@ import os
 import logging
 import webbrowser
 
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
 import gtk
 import gtkmozembed
+
 
 
 def getCurrentDesktopOfScreen(screen):
@@ -101,9 +107,13 @@ class Html(gtkmozembed.MozEmbed):
         super(self.__class__, self).__init__()
         self.connect("open-uri", self.onOpenUri)
         self.connect("new-window", self.onNewWindow)
+        self.connect("net-state", self.onNetState)
+        self.connect("net-start", self.onNetStart)
 
     def onOpenUri(self, _html, uri, *args):
         logging.info(uri)
+        if uri == 'about:blank':
+            return True
         return False
 
     def onNewWindow(self, _html, retval, *args):
@@ -111,9 +121,19 @@ class Html(gtkmozembed.MozEmbed):
         logging.info(url)
         webbrowser.open(url)
 
+    def onNetState(self, _html, *args):
+        logging.info("netstate: %s, %s", hex(args[0]), args[1:])
+
+    def onNetStart(self, _html, *args):
+        logging.info("net-start: %s", self.get_location())
+
+    def onEvent(self, _html, *args):
+        logging.info(args)
+
 class DockTaskWindow(gtk.Window):
-    def __init__(self):
+    def __init__(self, config):
         super(self.__class__,self).__init__()
+        self.config = config
 
         self.isDock = True
         self.defaultUrl = None
@@ -123,7 +143,8 @@ class DockTaskWindow(gtk.Window):
         
         toolbar = gtk.Toolbar()
         toolbar.set_style(gtk.TOOLBAR_ICONS)
-        toolbar.set_icon_size(gtk.ICON_SIZE_SMALL_TOOLBAR)
+        gtk.icon_size_register('doctasktoolbar', 16, 16)
+        toolbar.set_icon_size(gtk.icon_size_from_name('doctasktoolbar'))
 
         html = Html()
 
@@ -133,9 +154,15 @@ class DockTaskWindow(gtk.Window):
         refreshAction = gtk.Action("refresh", "refresh", "refresh", gtk.STOCK_REFRESH)
         exitAction = gtk.Action("exit", "exit", "exit", gtk.STOCK_QUIT)
         trayAction = gtk.Action("tray", "tray", "minimize to tray", gtk.STOCK_GO_DOWN)
+        newUrlAction = gtk.Action("newUrl", "newUrl", "open a new url", gtk.STOCK_JUMP_TO)
+        
 
         toolbar.add(dockAction.create_tool_item())
         toolbar.add(homeAction.create_tool_item())
+        urlListToolButton = gtk.MenuToolButton(gtk.STOCK_SELECT_ALL)
+        urlListToolButton.set_menu(self._buildUrlMenu())
+        toolbar.add(urlListToolButton)
+        # toolbar.add(newUrlAction.create_tool_item())
         toolbar.add(refreshAction.create_tool_item())
         toolbar.add(trayAction.create_tool_item())
         toolbar.add(exitAction.create_tool_item())
@@ -155,8 +182,26 @@ class DockTaskWindow(gtk.Window):
         exitAction.connect("activate", self.onExit)
         homeAction.connect("activate", self.onHome)
         trayAction.connect("activate", self.onTray)
+        newUrlAction.connect("activate", self.onNewUrl)
         self.connect("enter-notify-event", self.onEnterNotifyEvent)
         self.connect("show", self.onShow)
+
+    def _buildUrlMenu(self):
+        '''return gtk.Menu'''
+        res = gtk.Menu()
+        print self.config.urls
+        for x in self.config.urls:
+            name, url = x
+            menuItem = gtk.MenuItem(name)
+            menuItem.set_tooltip_text(url)
+            menuItem.connect("activate", self._onUrlMenuActivate, url)
+            menuItem.show()
+            res.append(menuItem)
+        print res.get_children()
+        return res
+
+    def _onUrlMenuActivate(self, _widget, url):
+        self.load_url(url)
 
     def onHome(self, *args):
         if self.defaultUrl is not None:
@@ -181,6 +226,9 @@ class DockTaskWindow(gtk.Window):
 
     def onExit(self, *args):
         gtk.main_quit()
+
+    def onNewUrl(self, *args):
+        pass
 
     def onWorkingAreaChange(self):
         geo = getWorkAreaGeometry(self)
@@ -213,10 +261,29 @@ class DockTaskWindow(gtk.Window):
     def onShow(self, *args):
         self.onWorkingAreaChange()
 
+class DockTaskCfg(object):
+    def __init__(self):
+        self.width = 200
+        self.urls = [('google task', 'https://mail.google.com/tasks/ig'),
+                     ('remember the milk', 'http://m.rememberthemilk.com/'),
+                     ]
+
+    def load(self, ifile):
+        if ifile is None:
+            return
+        data = json.load(ifile)
+        self.__dict__.update(data)
+
+    def dump(self, ofile):
+        if ofile is None:
+            return
+        json.dump(self.__dict__, ofile)
+        
 class DockTaskApp(object):
     def __init__(self):
         self._initMozilla()
-        self.window = DockTaskWindow()
+        self.config = self._loadConfig()
+        self.window = DockTaskWindow(self.config)
         self.window.connect("destroy", lambda *args: gtk.main_quit())
         self.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_DOCK)
         #self.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_NORMAL)
@@ -228,16 +295,27 @@ class DockTaskApp(object):
         gtkmozembed.set_profile_path(path, "default")
     
     def start(self):
-        self.window.show_all();
-        self.window.onWorkingAreaChange();
-        #self.window.onHome()
         self.window.load_url("https://mail.google.com/tasks/ig")
-        #self.window.load_url("https://m.rememberthemilk.com/")
-        gtk.main();
+        self.window.show_all()
+        gtk.main()
 
+    def _loadConfig(self):
+        config = DockTaskCfg()
+        path = os.path.expanduser('~/.config/docktask/config')
+        if os.path.isfile(path):
+            config.load(file(path))
+        return config
+
+    def _saveConfig(self):
+        path = os.path.expanduser('~/.config/docktask/config')
+        self.config.dump(file(path, 'w'))
+
+    def __del__(self):
+        self._saveConfig()
 
 def main():
     logging.basicConfig(level=logging.INFO)
+    DockTaskCfg().dump(None)
     DockTaskApp().start()
 
 if __name__ == '__main__':
