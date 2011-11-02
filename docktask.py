@@ -33,7 +33,7 @@ except ImportError:
     import simplejson as json
 
 import gtk
-import gtkmozembed
+import webkit
 
 
 
@@ -98,17 +98,17 @@ class PopupWindow(gtk.Window):
     def __init__(self, url):
         super(self.__class__, self).__init__()
         html = Html()
-        html.load_url(url)
+        html.load_uri(url)
         self.add(html)
         self.set_default_size(400, 300)
 
-class Html(gtkmozembed.MozEmbed):
+class Html(webkit.WebView):
     def __init__(self):
         super(self.__class__, self).__init__()
-        self.connect("open-uri", self.onOpenUri)
-        self.connect("new-window", self.onNewWindow)
-        self.connect("net-state", self.onNetState)
-        self.connect("net-start", self.onNetStart)
+        #self.connect("open-uri", self.onOpenUri)
+        #self.connect("new-window", self.onNewWindow)
+        #self.connect("net-state", self.onNetState)
+        #self.connect("net-start", self.onNetStart)
 
     def onOpenUri(self, _html, uri, *args):
         logging.info(uri)
@@ -208,8 +208,9 @@ class DockTaskWindow(gtk.Window):
             self.html.load_url(self.defaultUrl)
 
     def load_url(self, url):
+        logging.info("load_url: %s", url)
         self.defaultUrl = url
-        self.html.load_url(url)
+        self.html.load_uri(url)
 
     def onLeaveNotifyEvent(self, *args):
         pass
@@ -219,10 +220,10 @@ class DockTaskWindow(gtk.Window):
         self.activate_default()
 
     def onDockButtonClick(self, *args):
-        PopupWindow(self.html.get_location()).show_all()
+        PopupWindow(self.defaultUrl).show_all()
 
     def onRefresh(self, *args):
-        self.html.reload(gtkmozembed.FLAG_RELOADNORMAL)
+        self.html.reload()
 
     def onExit(self, *args):
         gtk.main_quit()
@@ -281,19 +282,12 @@ class DockTaskCfg(object):
         
 class DockTaskApp(object):
     def __init__(self):
-        self._initMozilla()
         self.config = self._loadConfig()
         self.window = DockTaskWindow(self.config)
         self.window.connect("destroy", lambda *args: gtk.main_quit())
         self.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_DOCK)
         #self.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_NORMAL)
 
-    def _initMozilla(self):
-        path = os.path.expanduser('~/.config/docktask/mozilla')
-        if not os.path.isdir(path):
-            os.makedirs(path)
-        gtkmozembed.set_profile_path(path, "default")
-    
     def start(self):
         self.window.load_url("https://mail.google.com/tasks/ig")
         self.window.show_all()
