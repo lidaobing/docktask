@@ -168,8 +168,12 @@ class DockTaskWindow(gtk.Window):
         toolbar.add(exitAction.create_tool_item())
 
         rootBox.pack_start(toolbar, False)
-        rootBox.pack_start(html)
-        rootBox.set_focus_child(html)
+
+        layout = gtk.ScrolledWindow()
+        layout.add(html)
+
+        rootBox.pack_start(layout)
+        rootBox.set_focus_child(layout)
 
         self.add(rootBox)
         self.set_default_size(200, 750)
@@ -205,7 +209,7 @@ class DockTaskWindow(gtk.Window):
 
     def onHome(self, *args):
         if self.defaultUrl is not None:
-            self.html.load_url(self.defaultUrl)
+            self.html.load_uri(self.defaultUrl)
 
     def load_url(self, url):
         logging.info("load_url: %s", url)
