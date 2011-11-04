@@ -5,7 +5,7 @@ from distutils.core import setup
 
 data_files = [
     ('/usr/share/applications', ['docktask.desktop']),
-    ('/usr/share/pixmaps', ['docktask.png']),
+    ('/usr/share/pixmaps', ['docktask/docktask.png']),
     ]
 
 setup(name='docktask',
