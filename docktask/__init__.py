@@ -26,6 +26,7 @@ such as rememberthemilk, google tasks, etc.
 import os
 import logging
 import webbrowser
+import pkg_resources
 
 try:
     import json
@@ -83,9 +84,13 @@ def getWorkAreaGeometry(gtkWindow):
 
 
 class StatusIcon(gtk.StatusIcon):
-    def __init__(self, dockTaskWindow):
+    def __init__(self, dockTaskWindow, **opts):
         super(self.__class__, self).__init__()
-        self.set_from_stock(gtk.STOCK_INDENT)
+        self._options = {
+                'icon_filename': pkg_resources.resource_filename('docktask', 'docktask.png'),
+                }
+        self._options.update(opts)
+        self.set_from_file(self._options['icon_filename'])
         self.dockTaskWindow = dockTaskWindow
         self.connect("activate", self.onActivate)
         self.set_visible(False)

@@ -1,5 +1,5 @@
-#from setuptools import setup, find_packages
-from distutils.core import setup
+from setuptools import setup, find_packages
+#from distutils.core import setup
 
 
 
@@ -15,5 +15,7 @@ setup(name='docktask',
       url='http://github.com/lidaobing/docktask',
       data_files = data_files,
       scripts = ['scripts/docktask'],
-      py_modules = ['docktask'],
+      packages = ['docktask'],
+      package_data={'': ['*.png']},
+      include_package_data = True,
       )
