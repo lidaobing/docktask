@@ -1,2 +1,2 @@
-PyGTK
-pywebkitgtk
+# PyGTK
+# pywebkitgtk
